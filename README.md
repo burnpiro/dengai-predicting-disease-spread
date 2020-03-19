@@ -2,7 +2,7 @@
 
 Keggle competition
 
-![alt text](./main.jpg "Logo Title Text 1")
+![alt text](img/main.jpg "Logo Title Text 1")
 
 https://www.drivendata.org/competitions/44/dengai-predicting-disease-spread/
 
