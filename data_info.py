@@ -50,17 +50,3 @@ cols_to_scale = ['year',
 TRAIN_DATASET_FRAC = 0.8
 train_file = './dengue_features_train_with_out.csv'
 test_file = './dengue_features_test.csv'
-
-# Check precip dependencies
-sns.pairplot(dataset[[
-    "reanalysis_air_temp_k",
-    "reanalysis_avg_temp_k",
-    "reanalysis_dew_point_temp_k",
-    "reanalysis_max_air_temp_k",
-    "reanalysis_min_air_temp_k",
-    "station_diur_temp_rng_c",
-    "station_avg_temp_c",
-    "station_diur_temp_rng_c",
-    "station_max_temp_c",
-    "station_min_temp_c"
-]], diag_kind="kde")
