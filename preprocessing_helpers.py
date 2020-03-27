@@ -38,10 +38,9 @@ def split_data(data, train_frac=TRAIN_DATASET_FRAC, label_column=LABEL_COLUMN, f
     train_data = data.sample(frac=train_frac, random_state=0)
     test_data = data.drop(train_data.index)
 
-    train_y = train_data.pop(label_column) if label_column else []
-    test_y = test_data.pop(label_column) if label_column else []
+    train_y = train_data.pop(label_column) if label_column is not None else []
+    test_y = test_data.pop(label_column) if label_column is not None else []
 
-    print(filter_cols)
     if filter_cols is not None:
         train_data = train_data[filter_cols]
         test_data = test_data[filter_cols]
