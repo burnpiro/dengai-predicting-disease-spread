@@ -48,5 +48,6 @@ cols_to_scale = ['year',
                  'weekofyear']
 
 TRAIN_DATASET_FRAC = 0.8
+DATETIME_COLUMN = "week_start_date"
 train_file = './dengue_features_train_with_out.csv'
 test_file = './dengue_features_test.csv'
