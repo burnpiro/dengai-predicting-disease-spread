@@ -5,9 +5,9 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from data_info import *
 from datetime import datetime
 
-LSTM_STEP = 6
-LSTM_FUTURE_TARGET = 6
-LSTM_HISTORY = 12
+LSTM_STEP = 1
+LSTM_FUTURE_TARGET = 1
+LSTM_HISTORY = 6
 
 
 def extract_data(train_file_path, columns, categorical_columns=CATEGORICAL_COLUMNS, categories_desc=CATEGORIES):
@@ -30,18 +30,22 @@ def extract_data(train_file_path, columns, categorical_columns=CATEGORICAL_COLUM
 
 
 def generate_multivariate_data(dataset, history_size=LSTM_HISTORY, target_size=LSTM_FUTURE_TARGET,
-                               step=LSTM_STEP, target_index=-1, single_step=False):
+                               step=LSTM_STEP, target_index=-1, target=None, single_step=False,
+                               train_frac=TRAIN_DATASET_FRAC):
     datasets = []
 
-    target = dataset[:, target_index]
+    if target is None:
+        target = dataset[:, target_index]
 
     dataset_size = len(dataset)
-    train_to_idx = int(dataset_size * TRAIN_DATASET_FRAC)
+    train_to_idx = int(dataset_size * train_frac) if train_frac != 1.0 else dataset_size - target_size
     start_train_idx = history_size
     start_val_idx = train_to_idx + history_size
     end_idx = dataset_size - target_size
 
-    indexes = [(start_train_idx, train_to_idx), (start_val_idx, end_idx)]
+    indexes = [(start_train_idx, train_to_idx)]
+    if train_frac != 1.0:
+        indexes.append((start_val_idx, end_idx))
 
     for (start_idx, end_idx) in indexes:
         data = []
@@ -61,20 +65,31 @@ def generate_multivariate_data(dataset, history_size=LSTM_HISTORY, target_size=L
 
 
 def generate_lstm_data(path, cols=CSV_COLUMNS + [DATETIME_COLUMN], label_column=LABEL_COLUMN, y_column=-1,
-                       norm_cols=cols_to_norm,
-                       cities=CATEGORIES['city'], index_col=DATETIME_COLUMN):
+                       norm_cols=cols_to_norm, history_size=LSTM_HISTORY, target_size=LSTM_FUTURE_TARGET,
+                       step=LSTM_STEP, cities=CATEGORIES['city'], index_col=DATETIME_COLUMN, single_step=False,
+                       train_frac=TRAIN_DATASET_FRAC, train_scale=None):
     dataset = extract_data(path, cols, categorical_columns=None)
 
     datasets = []
 
+    scale = None
+
+    if label_column not in dataset.columns:
+        dataset[label_column] = pd.Series(np.zeros(len(dataset[DATETIME_COLUMN])), index=dataset.index)
+
     for city_name in cities:
         city_data = dataset[dataset['city'] == city_name]
+        if train_scale is None:
+            train_scale = city_data.copy()
         city_data.index = city_data[index_col]
-        city_data, scale = preproc_data(city_data[norm_cols + [LABEL_COLUMN]], scale_cols=False)
+        city_data, scale = preproc_data(city_data[norm_cols + [label_column]], scale_cols=False,
+                                        train_scale=train_scale)
         datasets.append(city_data.values)
 
-    datasets = list(map(lambda x: generate_multivariate_data(x, target_index=y_column), datasets))
-    return datasets
+    datasets = list(map(lambda x: generate_multivariate_data(x, target_index=y_column, single_step=single_step,
+                                                             history_size=history_size, target_size=target_size,
+                                                             step=step, train_frac=train_frac), datasets))
+    return datasets, scale
 
 
 def preproc_data(data, norm_cols=cols_to_norm, scale_cols=cols_to_scale, train_scale=None):
