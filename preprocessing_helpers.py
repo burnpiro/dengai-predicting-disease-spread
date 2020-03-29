@@ -29,14 +29,76 @@ def extract_data(train_file_path, columns, categorical_columns=CATEGORICAL_COLUM
     return all_data
 
 
-def preproc_data(data, norm_cols=cols_to_norm, scale_cols=cols_to_scale):
-    # Make a copy, not to modify oryginal data
-    new_data = data.copy()
-    # Normalize temp and percipation
-    new_data[norm_cols] = StandardScaler().fit_transform(new_data[norm_cols])
+def generate_multivariate_data(dataset, history_size=LSTM_HISTORY, target_size=LSTM_FUTURE_TARGET,
+                               step=LSTM_STEP, target_index=-1, single_step=False):
+    datasets = []
 
-    # Scale year and week no but within (0,1)
-    new_data[scale_cols] = MinMaxScaler(feature_range=(0, 1)).fit_transform(new_data[scale_cols])
+    target = dataset[:, target_index]
+
+    dataset_size = len(dataset)
+    train_to_idx = int(dataset_size * TRAIN_DATASET_FRAC)
+    start_train_idx = history_size
+    start_val_idx = train_to_idx + history_size
+    end_idx = dataset_size - target_size
+
+    indexes = [(start_train_idx, train_to_idx), (start_val_idx, end_idx)]
+
+    for (start_idx, end_idx) in indexes:
+        data = []
+        labels = []
+        for i in range(start_idx, end_idx):
+            indices = range(i - history_size, i, step)
+            data.append(dataset[indices])
+
+            if single_step:
+                labels.append(target[i + target_size])
+            else:
+                labels.append(target[i:i + target_size])
+
+        datasets.append((np.array(data), np.array(labels)))
+
+    return datasets
+
+
+def generate_lstm_data(path, cols=CSV_COLUMNS + [DATETIME_COLUMN], label_column=LABEL_COLUMN, y_column=-1,
+                       norm_cols=cols_to_norm,
+                       cities=CATEGORIES['city'], index_col=DATETIME_COLUMN):
+    dataset = extract_data(path, cols, categorical_columns=None)
+
+    datasets = []
+
+    for city_name in cities:
+        city_data = dataset[dataset['city'] == city_name]
+        city_data.index = city_data[index_col]
+        city_data, scale = preproc_data(city_data[norm_cols + [LABEL_COLUMN]], scale_cols=False)
+        datasets.append(city_data.values)
+
+    datasets = list(map(lambda x: generate_multivariate_data(x, target_index=y_column), datasets))
+    return datasets
+
+
+def preproc_data(data, norm_cols=cols_to_norm, scale_cols=cols_to_scale, train_scale=None):
+    # Make a copy, not to modify original data
+    new_data = data.copy()
+    if train_scale is None:
+        train_scale = data
+    if norm_cols:
+        # Normalize temp and percipation
+        new_data[norm_cols] = StandardScaler().fit(train_scale[norm_cols]).transform(new_data[norm_cols])
+
+    if scale_cols:
+        # Scale year and week no but within (0,1)
+        new_data[scale_cols] = MinMaxScaler(feature_range=(0, 1)).fit(train_scale[scale_cols]).transform(
+            new_data[scale_cols])
+
+    return new_data, train_scale
+
+
+def one_hot_cat_column(feature_name, vocab):
+    return tf.feature_column.indicator_column(
+        tf.feature_column.categorical_column_with_vocabulary_list(feature_name,
+                                                                  vocab))
+
 
 def create_features_columns(data: pd.DataFrame, categorical_columns=CATEGORICAL_COLUMNS,
                             numerical_columns=NUMERIC_COLUMNS):
