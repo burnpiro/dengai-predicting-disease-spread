@@ -36,6 +36,7 @@ def generate_multivariate_data(dataset, history_size=LSTM_HISTORY, target_size=L
 
     if target is None:
         target = dataset[:, target_index]
+        dataset = dataset[:, :target_index]
 
     dataset_size = len(dataset)
     train_to_idx = int(dataset_size * train_frac) if train_frac != 1.0 else dataset_size - target_size
@@ -161,6 +162,9 @@ def split_data(data, train_frac=TRAIN_DATASET_FRAC, label_column=LABEL_COLUMN, f
 
 
 def export_test_to_csv(predictions=None, path=test_file):
+    print(len(predictions))
+    print('asas')
+
     org_test_data = pd.read_csv(path)
     org_test_data['total_cases'] = predictions
     org_test_data['total_cases'] = org_test_data['total_cases'].apply(lambda x: int(x) if x > 0 else 0)
