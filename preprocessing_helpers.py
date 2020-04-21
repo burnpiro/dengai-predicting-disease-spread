@@ -2,6 +2,7 @@ import pandas as pd
 import tensorflow as tf
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.model_selection import KFold
 from data_info import *
 from datetime import datetime
 
@@ -10,7 +11,8 @@ LSTM_FUTURE_TARGET = 1
 LSTM_HISTORY = 6
 
 
-def extract_data(train_file_path, columns, categorical_columns=CATEGORICAL_COLUMNS, categories_desc=CATEGORIES):
+def extract_data(train_file_path, columns, categorical_columns=CATEGORICAL_COLUMNS, categories_desc=CATEGORIES,
+                 interpolate=True):
     # Read csv file and return
     all_data = pd.read_csv(train_file_path, usecols=columns)
     if categorical_columns is not None:
@@ -24,7 +26,8 @@ def extract_data(train_file_path, columns, categorical_columns=CATEGORICAL_COLUM
         all_data = pd.get_dummies(all_data, prefix='', prefix_sep='')
 
     # fix missing data
-    all_data = all_data.interpolate(method='linear', limit_direction='forward')
+    if interpolate:
+        all_data = all_data.interpolate(method='linear', limit_direction='forward')
 
     return all_data
 
@@ -68,8 +71,11 @@ def generate_multivariate_data(dataset, history_size=LSTM_HISTORY, target_size=L
 def generate_lstm_data(path, cols=CSV_COLUMNS + [DATETIME_COLUMN], label_column=LABEL_COLUMN, y_column=-1,
                        norm_cols=cols_to_norm, history_size=LSTM_HISTORY, target_size=LSTM_FUTURE_TARGET,
                        step=LSTM_STEP, cities=CATEGORIES['city'], index_col=DATETIME_COLUMN, single_step=False,
-                       train_frac=TRAIN_DATASET_FRAC, train_scale=None):
+                       train_frac=TRAIN_DATASET_FRAC, train_scale=None, scale_cols=[], prepend_with_file=None,
+                       extra_columns=[]):
     dataset = extract_data(path, cols, categorical_columns=None)
+    if prepend_with_file is not None:
+        pre_dataset = extract_data(prepend_with_file, cols, categorical_columns=None)
 
     datasets = []
 
@@ -80,11 +86,13 @@ def generate_lstm_data(path, cols=CSV_COLUMNS + [DATETIME_COLUMN], label_column=
 
     for city_name in cities:
         city_data = dataset[dataset['city'] == city_name]
+        if prepend_with_file is not None:
+            city_data = pre_dataset[pre_dataset['city'] == city_name].iloc[-(history_size+1):].append(city_data, ignore_index=True)
         if train_scale is None:
             train_scale = city_data.copy()
         city_data.index = city_data[index_col]
-        city_data, scale = preproc_data(city_data[norm_cols + [label_column]], scale_cols=False,
-                                        train_scale=train_scale)
+        city_data, scale = preproc_data(city_data[norm_cols + scale_cols + extra_columns + [label_column]], norm_cols=norm_cols,
+                                        scale_cols=scale_cols, train_scale=train_scale)
         datasets.append(city_data.values)
 
     datasets = list(map(lambda x: generate_multivariate_data(x, target_index=y_column, single_step=single_step,
@@ -170,3 +178,7 @@ def export_test_to_csv(predictions=None, path=test_file):
     org_test_data['total_cases'] = org_test_data['total_cases'].apply(lambda x: int(x) if x > 0 else 0)
     org_test_data[['city', 'year', 'weekofyear', 'total_cases']].to_csv(
         './out/out' + datetime.now().strftime("%Y%m%d-%H%M%S") + ".csv", index=False)
+
+def k_fold_data(x, y, folds=10):
+    kfold = KFold(n_splits=folds, shuffle=True)
+    return kfold.split(x, y)
