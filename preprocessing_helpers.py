@@ -169,7 +169,7 @@ def split_data(data, train_frac=TRAIN_DATASET_FRAC, label_column=LABEL_COLUMN, f
     return (train_data, train_y), (test_data, test_y)
 
 
-def export_test_to_csv(predictions=None, path=test_file):
+def export_test_to_csv(predictions=None, path=test_file, prefix='test'):
     print(len(predictions))
     print('asas')
 
@@ -177,7 +177,7 @@ def export_test_to_csv(predictions=None, path=test_file):
     org_test_data['total_cases'] = predictions
     org_test_data['total_cases'] = org_test_data['total_cases'].apply(lambda x: int(x) if x > 0 else 0)
     org_test_data[['city', 'year', 'weekofyear', 'total_cases']].to_csv(
-        './out/out' + datetime.now().strftime("%Y%m%d-%H%M%S") + ".csv", index=False)
+        './out/out_' + prefix + '_' + datetime.now().strftime("%Y%m%d-%H%M%S") + ".csv", index=False)
 
 def k_fold_data(x, y, folds=10):
     kfold = KFold(n_splits=folds, shuffle=True)
