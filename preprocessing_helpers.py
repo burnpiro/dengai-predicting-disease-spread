@@ -72,7 +72,7 @@ def generate_lstm_data(path, cols=CSV_COLUMNS + [DATETIME_COLUMN], label_column=
                        norm_cols=cols_to_norm, history_size=LSTM_HISTORY, target_size=LSTM_FUTURE_TARGET,
                        step=LSTM_STEP, cities=CATEGORIES['city'], index_col=DATETIME_COLUMN, single_step=False,
                        train_frac=TRAIN_DATASET_FRAC, train_scale=None, scale_cols=[], prepend_with_file=None,
-                       extra_columns=[]):
+                       extra_columns=[], group_by_column=False):
     dataset = extract_data(path, cols, categorical_columns=None)
     if prepend_with_file is not None:
         pre_dataset = extract_data(prepend_with_file, cols, categorical_columns=None)
@@ -98,7 +98,35 @@ def generate_lstm_data(path, cols=CSV_COLUMNS + [DATETIME_COLUMN], label_column=
     datasets = list(map(lambda x: generate_multivariate_data(x, target_index=y_column, single_step=single_step,
                                                              history_size=history_size, target_size=target_size,
                                                              step=step, train_frac=train_frac), datasets))
+
+    if group_by_column:
+        datasets = group_data_by_columns(datasets, columns=norm_cols + scale_cols + extra_columns)
+        return datasets, scale, norm_cols + scale_cols + extra_columns
     return datasets, scale
+
+
+def group_data_by_columns(datasets, columns):
+    """
+    :param datasets: [CxNxSxF]
+    :param columns: F
+    :return: CxNxFxS
+    """
+    new_dataset = []
+    for i in range(len(datasets)):
+        datalist = []
+        for row in range(len(datasets[i][0][0])):
+            row_data = []
+            for column_idx in range(len(columns)):
+                col_data = []
+                for series in range(len(datasets[i][0][0][row])):
+                    col_data.append(datasets[i][0][0][row][series][column_idx])
+
+                row_data.append(col_data)
+            datalist.append(row_data)
+
+        new_dataset.append((datalist, datasets[i][0][1]))
+
+    return new_dataset
 
 
 def preproc_data(data, norm_cols=cols_to_norm, scale_cols=cols_to_scale, train_scale=None):
