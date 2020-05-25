@@ -59,9 +59,9 @@ def generate_multivariate_data(dataset, history_size=LSTM_HISTORY, target_size=L
             data.append(dataset[indices])
 
             if single_step:
-                labels.append(target[i + target_size])
+                labels.append(target[i + target_size - 2])
             else:
-                labels.append(target[i:i + target_size])
+                labels.append(target[i:i + target_size - 1])
 
         datasets.append((np.array(data), np.array(labels)))
 
