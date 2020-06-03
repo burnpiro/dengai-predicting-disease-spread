@@ -1,6 +1,6 @@
 #DengAI: Predicting Disease Spread
 
-Keggle competition
+DrivenData competition
 
 ![alt text](img/main.jpg "Logo Title Text 1")
 
