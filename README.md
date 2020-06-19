@@ -1,6 +1,6 @@
-#DengAI: Predicting Disease Spread
+# DengAI: Predicting Disease Spread
 
-Place 14/9046 (19 Jun 2020)
+#### Place 14/9064 (19 Jun 2020)
 ![alt text](img/current-01-06.png "14th Place Image")
 
 DrivenData competition
